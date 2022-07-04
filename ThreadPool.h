@@ -67,7 +67,7 @@ inline ThreadPool::ThreadPool(size_t threads_num): stop_(false) {
 template <class Func, class... Args>
 auto ThreadPool::addTask(Func&& func, Args&&... args)
     -> std::future <typename std::result_of <Func(Args...)>::type> {
-        using return_type = typename std::result_of<F(Args...)>::type;
+        using return_type = typename std::result_of<Func(Args...)>::type;
         auto task = std::make_shared < std::packaged_task<return_type()> >(
             std::bind(std::forward<Func>(func), std::forward<Args>(args)... )
             );
@@ -75,11 +75,9 @@ auto ThreadPool::addTask(Func&& func, Args&&... args)
         std::future <return_type> res = task->get_future();
         {
             std::unique_lock<std::mutex> lock (queue_mutex_);
-            if (stop_) {
+            if (stop_) 
                 throw std::runtime_error ("enqueue on stopped ThreadPool");
             tasks_.emplace([task](){ (*task)(); });
-
-            }
         }
         cv_.notify_one();
         return res;     
